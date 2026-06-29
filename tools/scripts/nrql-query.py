@@ -2,7 +2,7 @@
 """nrql-query tool — runs a NRQL query via New Relic NerdGraph.
 
 Reads the tool input as JSON on stdin (and args as UPPERCASE env vars), uses the
-NEW_RELIC_USER_KEY supplied AT POINT OF USE by the platform broker (never stored
+NEW_RELIC_USER_API_KEY supplied AT POINT OF USE by the platform broker (never stored
 in the repo), and prints the rows as JSON on stdout. Non-zero exit on failure.
 """
 import json, os, sys, urllib.request
@@ -13,10 +13,10 @@ def main() -> int:
     nrql = args.get("nrql") or os.environ.get("NRQL")
     if not nrql:
         print("missing 'nrql'", file=sys.stderr); return 2
-    key = os.environ.get("NEW_RELIC_USER_KEY")
+    key = os.environ.get("NEW_RELIC_USER_API_KEY")
     acct = os.environ.get("NEW_RELIC_ACCOUNT_ID")
     if not key or not acct:
-        print("NEW_RELIC_USER_KEY / NEW_RELIC_ACCOUNT_ID not provided", file=sys.stderr); return 3
+        print("NEW_RELIC_USER_API_KEY / NEW_RELIC_ACCOUNT_ID not provided", file=sys.stderr); return 3
     query = (
         '{ actor { account(id: %s) { nrql(query: %s) { results } } } }'
         % (acct, json.dumps(nrql))

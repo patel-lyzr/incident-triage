@@ -1,11 +1,13 @@
-# Runbook — Payments Latency
+# Runbook — Payments Latency / Errors
 
 Symptom: elevated checkout/payment latency or error rate.
 
-1. check: `SELECT percentage(count(*), WHERE error) FROM Transaction WHERE appName='payments' SINCE 10 minutes ago`
-   - branch: error_rate > 1% → step 3 (DB path); else → step 2 (upstream path).
-2. check upstream: `SELECT average(duration) FROM Span WHERE service='payment-gateway' SINCE 10 minutes ago` → escalate to diagnoser with hypothesis "upstream gateway slow".
-3. check DB: `SELECT percentile(db.duration,95) FROM Span WHERE service='payments' SINCE 10 minutes ago`
-   - branch: p95 > 500ms → escalate to diagnoser "db contention"; else → escalate "unknown".
-4. action: failover read replica — REQUIRES HUMAN APPROVAL.
-5. escalate: post findings, then request page of payments on-call.
+1. measure: `SELECT percentage(count(*), WHERE error) FROM PaymentTxn WHERE appName='payments' SINCE 15 minutes ago`
+   - branch: error_rate > 1% → step 2 (correlate); else → step 4 (latency path).
+2. correlate (GitHub MCP): list merged PRs + commits on the payments repo in the
+   last 2h. A change merged shortly before the spike is the prime suspect.
+3. search (GitHub MCP): search open issues for "payments" / "checkout 5xx" — link if found.
+4. measure latency: `SELECT percentile(duration,95) FROM PaymentTxn WHERE appName='payments' SINCE 15 minutes ago`
+   - branch: p95 > 800ms → escalate to diagnoser "latency regression".
+5. report (GitHub MCP): comment findings (impact, suspect PR + link, evidence) on the incident issue.
+6. escalate: request to page payments on-call (HUMAN REVIEW REQUIRED).

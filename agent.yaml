@@ -9,9 +9,10 @@ spec_version: "0.1.0"
 name: incident-triage
 version: "1.0.0"
 description: >
-  Incident triage agent. Follows a Confluence runbook as a decision tree, runs
-  New Relic diagnostics, delegates diagnosis/summary to sub-agents, and posts to
-  the incident channel before paging a human.
+  Incident triage agent. Correlates the symptom (New Relic NRQL) with the change
+  that caused it (GitHub MCP: recent commits/PRs + issue search), delegates the
+  deep-dive to sub-agents, and comments findings on the incident issue before
+  paging a human.
 author: lyzr
 license: proprietary
 
@@ -45,10 +46,10 @@ mcp_servers:
     headers:
       Authorization: "Bearer ${GITHUB_PAT}"
 
-# --- (2) The agent's OWN tools (run as code, not prompt imitation) ---
+# --- (2) The agent's OWN tool: real New Relic NRQL (the "post update" step is a
+# GitHub MCP issue comment, not a custom tool). ---
 tools:
   - nrql-query
-  - post-incident-update
 
 # --- (2) The agent's OWN skills ---
 skills:

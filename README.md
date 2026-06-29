@@ -1,53 +1,48 @@
 # incident-triage
 
-Nordstrom reference **incident triage agent**, authored to the OpenGAP spec
-(v0.1.0). It anchors the "complex agent" requirements: receive an alert → follow
-the runbook → run diagnostics → delegate to sub-agents → post findings → (with
-human review) page on-call.
+Nordstrom reference **incident triage agent** (OpenGAP spec v0.1.0). Core idea:
+most incidents are caused by a recent deploy, so the agent **correlates the
+symptom (New Relic) with the change that caused it (GitHub)** and reports it.
 
-## How this repo maps to the 11 requirements
-| # | Requirement | Where it lives here |
-|---|---|---|
-| 1 | Multiple MCP servers, own creds | `agent.yaml → mcp_servers` (pagerduty, servicenow, confluence, newrelic; each `${TOKEN}`) |
-| 2 | Tools + skills as code | `tools/nrql-query.yaml` (+ `scripts/`), `skills/runbook-follower/` |
-| 3 | Ground in knowledge | `knowledge/index.yaml` + runbook & business-rules docs |
-| 4 | Sub-agents | `agents/diagnoser/` (dir), `agents/summarizer.md` (file) + `delegation` |
-| 5 | Call agents via platform | `agent.yaml → a2a` (by identity, not hardcoded endpoints) |
-| 6 | Inherit base agent | `agent.yaml → extends: …/nordstrom-base-agent` |
-| 7 | Real-time PII | SRS policy bound to the agent (see below) — incoming + outgoing |
-| 8 | Runtime policy | SRS policy enforced per tool call (OPA/Cedar) |
-| 9 | Tenant/run isolation | `DUTIES.md` (SoD) + per-agent sandbox/memory; `compliance.segregation_of_duties` |
-| 10 | Cost attribution | platform observability (per agent/team), nothing repo-side |
-| 11 | Creds out of reach | `${VAR}` refs only; broker injects at point of use (see scripts) |
+Flow: alert → confirm the spike with NRQL → find the suspect commit/PR via the
+**GitHub MCP** → search open issues for dupes → delegate the deep-dive to
+sub-agents → comment findings on the incident issue → (human review) page on-call.
+
+## Capabilities demonstrated
+| Capability | Where it lives |
+|---|---|
+| **MCP** | GitHub MCP — `.mcp.json` (works today) + `agent.yaml → mcp_servers` (spec decl). Lists commits/PRs, searches & comments on issues. |
+| **Tool** (code) | `tools/nrql-query.yaml` + `tools/scripts/nrql-query.py` — real New Relic NerdGraph NRQL. |
+| **Skill** | `skills/runbook-follower/` — walks the runbook as a decision tree (symptom→change). |
+| **Sub-agents** | `agents/diagnoser/`, `agents/summarizer.md` + `delegation`. |
+| Knowledge | `knowledge/` — runbook + business rules + service ownership. |
+| A2A / compliance / SoD | `agent.yaml → a2a`, `compliance` (HITL before paging), `DUTIES.md`. |
+
+## Simulation data (so it runs end-to-end)
+`scripts/seed_newrelic.py` seeds `PaymentTxn` events into New Relic (healthy
+baseline → ~11% error + ~1s p95 regression in the last ~8 min). The matching
+GitHub story lives on this repo: a merged **suspect PR** (payments pool 16→4),
+an open **incident issue**, and a **related** known issue for the dupe-search.
+
+The agent's path, end to end:
+1. NRQL → `err_pct ≈ 11%, p95 ≈ 1000ms` (spike confirmed)
+2. GitHub MCP `list_pull_requests` → the merged "lean connection pool" PR right before the spike = suspect
+3. GitHub MCP `search_issues` → finds the open "pool exhaustion" issue (not a dupe of a fix, links context)
+4. GitHub MCP `create_issue_comment` → posts findings + roll-back recommendation on the incident issue
 
 ## Run it
-Register in AgentOS with `source = github.com/<org>/incident-triage`, or via SDK:
-```ts
-const agent = new ComputerAgent({
-  source: "github.com/<org>/incident-triage",
-  harness: "claude-agent-sdk",
-  runtime: new LocalSubstrate(),
-  envs: { ANTHROPIC_API_KEY, /* + MCP creds injected by the broker */ },
-});
-for await (const ev of agent.chat("Alert: payments latency SEV2")) { /* … */ }
-```
+Register in AgentOS with `source = github.com/patel-lyzr/incident-triage`, engine
+`claude-agent-sdk`. Required env injected by the platform:
+`ANTHROPIC_API_KEY`, `GITHUB_PAT` (GitHub MCP), `NEW_RELIC_USER_API_KEY` +
+`NEW_RELIC_ACCOUNT_ID` (the `nrql-query` tool).
 
 ## PII
-PII is **not** configured in this repo. It's applied at the **proxy level (SRS)**,
-configured from Studio — incoming/outgoing redaction runs on the execution path
-independent of the agent definition. Nothing to wire here.
+PII is **not** in this repo — it's applied at the **proxy level (SRS)** from
+Studio (incoming SSN=block / Email=redact on the execution path), independent of
+the agent definition.
 
-## Engine + what runs today
-Run on **`claude-agent-sdk`** (the only engine that speaks MCP). To keep this
-build runnable, `workflows/` and `extends` were dropped (those are gitclaw-native
-and not needed here).
-
-**Works on claude-agent-sdk today:**
-- **MCP** — GitHub MCP via `.mcp.json` (auto-discovered with `settingSources:["project"]`)
-- `tools/` — written in the claude-agent-sdk loader shape (`implementation.script`)
-- `skills/` (the runbook-follower), `agents/` (sub-agents), `hooks/`, `compliance` (HITL), `model`
-- `knowledge/` — files on disk; the agent reads them via the Read tool / the runbook skill
-
-**Still platform-side gaps:** outgoing PII (`redactOutput`) and a Vault-backed
-per-tenant credential broker (req #11). The `mcp_servers:` block in `agent.yaml`
-is kept as the OpenGAP-spec declaration (inert; `.mcp.json` is the working copy).
+## Engine
+Runs on **`claude-agent-sdk`** (the only engine that speaks MCP). `workflows/`
+and `extends` were dropped (gitclaw-native, not needed here). The `mcp_servers:`
+block in `agent.yaml` is the OpenGAP-spec declaration; `.mcp.json` is the
+working copy the loader auto-discovers (`settingSources:["project"]`).
