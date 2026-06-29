@@ -1,0 +1,15 @@
+# Knowledge corpus (req #3). The platform loads these; `always_load` docs are
+# pinned into context, the rest are retrieved on demand by tag.
+documents:
+  - path: runbook-payments-latency.md
+    tags: [runbook, payments, latency]
+    priority: high
+    always_load: false
+  - path: business-rules.md
+    tags: [rules, escalation, sla]
+    priority: high
+    always_load: true
+  - path: service-ownership.md
+    tags: [ownership, oncall]
+    priority: medium
+    always_load: false

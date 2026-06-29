@@ -1,0 +1,115 @@
+# incident-triage — Nordstrom reference agent (OpenGAP spec v0.1.0)
+#
+# Receives an alert → opens the matching runbook → runs the first diagnostics →
+# delegates to specialist sub-agents → posts findings before paging a human.
+# Exercises every "complex agent" requirement: MCP, tools+skills, knowledge,
+# sub-agents, A2A, inheritance, real-time PII, runtime policy, SoD isolation.
+
+spec_version: "0.1.0"
+name: incident-triage
+version: "1.0.0"
+description: >
+  Incident triage agent. Follows a Confluence runbook as a decision tree, runs
+  New Relic diagnostics, delegates diagnosis/summary to sub-agents, and posts to
+  the incident channel before paging a human.
+author: lyzr
+license: proprietary
+
+# Engine: claude-agent-sdk (it speaks MCP). `extends` + `workflows/` dropped —
+# those are gitagent/gitclaw-native and not needed for this MCP-focused build.
+# Bare model name so the claude-agent-sdk engine (which supports MCP) uses it
+# directly; the gitagent engine would normalize it to anthropic:… if used.
+model:
+  preferred: claude-sonnet-4-6
+  fallback:
+    - claude-haiku-4-5-20251001
+  constraints:
+    temperature: 0.1
+    max_tokens: 8192
+
+runtime:
+  max_turns: 40
+  timeout: 600
+  budget_usd: 3.0
+
+# --- (1) MCP: the real GitHub MCP server (no simulation). The PAT is referenced
+# by name (${GITHUB_PAT}) and injected at point of use by the platform — never
+# baked into the repo. (req #1, #11)
+# NOTE: this `mcp_servers` block is the OpenGAP-spec declaration; the loader does
+# not honor it yet, so the WORKS-TODAY copy lives in `.mcp.json` at the repo root
+# (claude-agent-sdk auto-discovers it via settingSources:["project"]).
+mcp_servers:
+  github:
+    # Hosted GitHub MCP (no local process needed in the sandbox)
+    url: https://api.githubcopilot.com/mcp/
+    headers:
+      Authorization: "Bearer ${GITHUB_PAT}"
+
+# --- (2) The agent's OWN tools (run as code, not prompt imitation) ---
+tools:
+  - nrql-query
+  - post-incident-update
+
+# --- (2) The agent's OWN skills ---
+skills:
+  - runbook-follower
+
+# --- (4) Sub-agents the parent discovers and calls at run time ---
+agents:
+  diagnoser:
+    description: Deep-dives a single hypothesis using diagnostics + knowledge
+    delegation:
+      mode: auto
+      triggers:
+        - hypothesis_formed
+  summarizer:
+    description: Writes the incident-channel summary from collected findings
+    delegation:
+      mode: explicit
+delegation:
+  mode: router
+  router: incident-triage
+
+# --- (5) Agent-to-Agent: reachable by identity through the platform ---
+a2a:
+  url: https://spa.test.studio.lyzr.ai/agentos/api/v1/agents
+  capabilities:
+    - incident.triage
+    - runbook.execute
+  authentication: cak
+
+# --- (3) Knowledge corpus (runbooks + business rules) loaded from knowledge/ ---
+# (index.yaml declares priority + always_load; see knowledge/index.yaml)
+
+# --- (7,8,9) Compliance: HITL before paging, audit logging, SoD isolation ---
+compliance:
+  risk_tier: high
+  frameworks:
+    - data_governance
+  supervision:
+    human_in_the_loop: always       # never page a person without human review
+    escalation_triggers:
+      - action_type: page_human
+      - action_type: production_change
+      - confidence_below: 0.8
+    kill_switch: true
+    override_capability: true
+  recordkeeping:
+    audit_logging: true
+    log_format: structured_json
+    retention_period: 2y
+    log_contents:
+      - prompts_and_responses
+      - tool_calls
+      - decision_pathways
+      - pii_actions
+    immutable: true
+  # Real-time PII handling runs on the execution path (SRS policy bound to this
+  # agent): SSN=block, Email=redact — incoming AND outgoing. See README.
+  segregation_of_duties:
+    enabled: true                   # full policy in DUTIES.md (req #9)
+
+tags: [incident, triage, sre, nordstrom]
+metadata:
+  team: platform-sre
+  owner_group: nordstrom-sre

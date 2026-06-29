@@ -1,0 +1,4 @@
+PreToolUse:
+  - matcher: post-incident-update
+    command: ./hooks/scripts/pre-page-guard.sh
+    timeout_ms: 4000

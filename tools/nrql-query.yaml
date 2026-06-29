@@ -1,0 +1,19 @@
+# claude-agent-sdk loader shape: `parameters` (JSON-schema subset) + `implementation.script`.
+# Args are passed to the script as UPPERCASE env vars AND as JSON on stdin.
+name: nrql-query
+description: Run a New Relic NRQL query and return the rows (read-only diagnostics)
+parameters:
+  type: object
+  properties:
+    nrql:
+      type: string
+      description: The NRQL query to execute
+    timeout_seconds:
+      type: integer
+      description: Query timeout in seconds
+  required: [nrql]
+implementation:
+  script:
+    command: python3
+    args: ["tools/scripts/nrql-query.py"]
+    timeout_ms: 30000

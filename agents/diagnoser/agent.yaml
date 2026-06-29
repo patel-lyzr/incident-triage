@@ -1,0 +1,14 @@
+spec_version: "0.1.0"
+name: diagnoser
+version: "1.0.0"
+description: Tests a single incident hypothesis using read-only diagnostics + knowledge.
+model:
+  preferred: anthropic:claude-sonnet-4-6
+tools:
+  - nrql-query
+runtime:
+  max_turns: 12
+compliance:
+  risk_tier: medium
+  supervision:
+    human_in_the_loop: none

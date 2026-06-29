@@ -1,0 +1,6 @@
+layers:
+  - name: working
+    path: MEMORY.md
+    max_lines: 150
+    format: markdown
+update_triggers: [on_session_end]
