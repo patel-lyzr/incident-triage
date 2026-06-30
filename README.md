@@ -28,7 +28,7 @@ The agent's path, end to end:
 1. NRQL → `err_pct ≈ 11%, p95 ≈ 1000ms` (spike confirmed)
 2. GitHub MCP `list_pull_requests` → the merged "lean connection pool" PR right before the spike = suspect
 3. GitHub MCP `search_issues` → finds the open "pool exhaustion" issue (not a dupe of a fix, links context)
-4. GitHub MCP `create_issue_comment` → posts findings + roll-back recommendation on the incident issue
+4. GitHub MCP `add_issue_comment` → posts findings + roll-back recommendation on the incident issue
 
 ## Run it
 Register in AgentOS with `source = github.com/patel-lyzr/incident-triage`, engine

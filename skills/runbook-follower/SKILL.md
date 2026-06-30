@@ -15,12 +15,15 @@ service's GitHub repo (fetch it with the GitHub MCP `get_file_contents`).
 Parse the runbook into ordered **steps**, each one of:
 - **measure** — run a New Relic query with the `nrql-query` tool; record the number.
 - **branch** — choose the next step from a condition over prior results.
-- **correlate** — use the **GitHub MCP** (`list_commits`, `list_pull_requests`,
-  `get_pull_request`) to find the change near the spike; name the suspect PR.
-- **search** — use the **GitHub MCP** (`search_issues`) for existing reports.
-- **report** — use the **GitHub MCP** (`create_issue_comment` / `create_issue`)
+- **correlate** — `mcp__github__list_pull_requests` (closed/merged, newest first)
+  + `mcp__github__list_commits`; pull the diff with
+  `mcp__github__get_pull_request_files`. Name the suspect PR.
+- **search** — `mcp__github__search_issues` for existing reports.
+- **report** — `mcp__github__add_issue_comment` (or `mcp__github__create_issue`)
   to post findings on the incident issue.
 - **escalate** — request to page a human (requires human review).
+
+These tools are already loaded — call them directly, do not search for them.
 
 Execute in order, never skip. At each branch, state the condition + which path
 you took + the evidence (the NRQL number or the commit/PR).
