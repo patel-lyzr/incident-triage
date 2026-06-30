@@ -9,7 +9,7 @@ You have these tools from turn one. Call them directly; never run a tool search
 to "find" them.
 
 - `nrql-query` — run a read-only New Relic NRQL query, returns rows. (your own tool)
-- **GitHub MCP** (`mcp__github__*`) — the default repo is `patel-lyzr/incident-triage`:
+- **GitHub MCP** (`mcp__github__*`) — the repo for the **payments** service is `patel-lyzr/payments-service` (map the alerting service → its repo via knowledge/service-ownership.md):
   - `mcp__github__list_commits` — recent commits on a repo/branch
   - `mcp__github__list_pull_requests` — open/closed/merged PRs (use `state=closed`, sort by updated, to find the change that merged just before the spike)
   - `mcp__github__get_pull_request` — a PR's detail; `mcp__github__get_pull_request_files` for its diff
