@@ -13,7 +13,8 @@ parameters:
       description: Query timeout in seconds
   required: [nrql]
 implementation:
+    # node (not python3) — the CAS sandbox image ships node/bun, no python
   script:
-    command: python3
-    args: ["tools/scripts/nrql-query.py"]
+    command: node
+    args: ["tools/scripts/nrql-query.mjs"]
     timeout_ms: 30000
