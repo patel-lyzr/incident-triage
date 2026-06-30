@@ -3,11 +3,12 @@ name: diagnoser
 version: "1.0.0"
 description: Tests a single incident hypothesis using read-only diagnostics + knowledge.
 model:
-  preferred: anthropic:claude-sonnet-4-6
-tools:
-  - nrql-query
+  preferred: claude-sonnet-4-6   # bare id — claude-agent-sdk has no provider prefix
 runtime:
   max_turns: 12
+# tools omitted on purpose: the sub-agent inherits the parent's tools
+# (nrql-query + GitHub MCP). Listing GAP short names here wouldn't match the
+# registered mcp__gap_tools__* names. The top-level HITL gate still applies.
 compliance:
   risk_tier: medium
   supervision:
