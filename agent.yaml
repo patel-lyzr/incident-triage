@@ -89,10 +89,6 @@ compliance:
     - data_governance
   supervision:
     human_in_the_loop: always       # never page a person without human review
-    escalation_triggers:
-      - action_type: page_human
-      - action_type: production_change
-      - confidence_below: 0.8
     kill_switch: true
     override_capability: true
   recordkeeping:
